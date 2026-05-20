@@ -153,6 +153,7 @@ export class GraphBuilder {
     for (const [, node] of this.nodes) {
       const rawImports: RawImport[] =
         (node as GraphNode & { _rawImports?: RawImport[] })._rawImports ?? [];
+      const unresolvedImports: string[] = [];
 
       for (const rawImport of rawImports) {
         const resolved = resolveSpecifier(rawImport.specifier, node.path, workspaceRoot);
@@ -168,8 +169,15 @@ export class GraphBuilder {
             sourceLine: rawImport.sourceLine,
             specifier: rawImport.specifier,
           });
+          continue;
+        }
+
+        if (this.isFileLikeSpecifier(rawImport.specifier)) {
+          unresolvedImports.push(rawImport.specifier);
         }
       }
+
+      (node as GraphNode & { _unresolvedImports?: string[] })._unresolvedImports = unresolvedImports;
     }
   }
 
@@ -192,6 +200,10 @@ export class GraphBuilder {
 
   private toId(absPath: string, workspaceRoot: string): string {
     return path.relative(workspaceRoot, absPath).replace(/\\/g, '/');
+  }
+
+  private isFileLikeSpecifier(specifier: string): boolean {
+    return specifier.startsWith('.') || specifier.startsWith('/');
   }
 
   private removeNode(absPath: string, workspaceRoot: string): void {

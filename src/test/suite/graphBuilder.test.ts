@@ -9,6 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { GraphBuilder } from '../../analysis/graphBuilder';
 import { ResolvedScanConfig } from '../../analysis/scanPolicy';
+import { GraphNode } from '../../model/graphTypes';
 
 // Minimal stub logger
 const stubLogger = {
@@ -251,5 +252,21 @@ suite('GraphBuilder', () => {
     const data = builder.fullScan([absPath], makeConfig(tmpDir));
 
     assert.ok(data.edges.some((edge) => edge.source === 'src/self.ts' && edge.target === 'src/self.ts'));
+  });
+
+  test('fullScan: stores unresolved local imports and ignores external packages', () => {
+    writeTempFiles(tmpDir, {
+      'src/a.ts': `import './missing';\nimport helper from 'lodash';\nexport const a = helper;\n`,
+    });
+
+    const absPath = path.join(tmpDir, 'src/a.ts');
+    const builder = new GraphBuilder(stubLogger as never);
+    const data = builder.fullScan([absPath], makeConfig(tmpDir));
+
+    const node = data.nodes.find((entry) => entry.id === 'src/a.ts') as GraphNode & {
+      _unresolvedImports?: string[];
+    };
+    assert.ok(node);
+    assert.deepStrictEqual(node._unresolvedImports, ['./missing']);
   });
 });
