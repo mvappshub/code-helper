@@ -71,6 +71,13 @@ export function buildOverlay(graphData, insights, entryPointPatterns) {
     return overlay;
   }
 
+  (insights.fanOut || []).forEach((fanOut) => {
+    overlay[fanOut.nodes[0]] = {
+      category: 'fan-out',
+      reason: `Fan-out: imports ${fanOut.metric} files`,
+    };
+  });
+
   (insights.hubs || []).forEach((hub) => {
     overlay[hub.nodes[0]] = {
       category: 'hub',

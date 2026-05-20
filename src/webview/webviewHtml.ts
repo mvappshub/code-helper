@@ -53,6 +53,7 @@ export function getWebviewHtml(
     <div class="legend-item"><span class="legend-dot danger"></span>Danger LOC</div>
     <div class="legend-item"><span class="legend-dot cycle"></span>Cycle</div>
     <div class="legend-item"><span class="legend-dot hub"></span>Hub</div>
+    <div class="legend-item"><span class="legend-dot fan-out"></span>Fan-out</div>
     <div class="legend-item"><span class="entrypoint-indicator"></span> entry point</div>
     <div class="legend-item"><span class="import-line"></span> import</div>
   </div>

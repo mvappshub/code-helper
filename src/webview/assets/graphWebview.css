@@ -131,6 +131,7 @@ canvas.grabbing { cursor: grabbing; }
 .legend-dot.danger { background: #f44747; }
 .legend-dot.cycle { background: #000; border: 2px solid #ff5c57; }
 .legend-dot.hub { background: #000; border: 2px solid #d7ba7d; }
+.legend-dot.fan-out { background: #000; border: 2px solid #4fc1ff; }
 
 .entrypoint-indicator {
   width: 12px;

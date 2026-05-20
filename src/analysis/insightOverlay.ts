@@ -2,7 +2,7 @@ import { GraphData } from '../model/graphTypes';
 import { InsightSet } from './insightTypes';
 import { matchesPatterns } from '../util/fileMatcher';
 
-export type OverlayCategory = 'cycle' | 'hub' | 'entrypoint';
+export type OverlayCategory = 'cycle' | 'hub' | 'fan-out' | 'entrypoint';
 
 export interface OverlayInfo {
   category: OverlayCategory;
@@ -27,6 +27,14 @@ export function buildInsightOverlay(
 
   if (!insightSet) {
     return overlay;
+  }
+
+  for (const fanOut of insightSet.fanOut) {
+    const nodeId = fanOut.nodes[0];
+    overlay[nodeId] = {
+      category: 'fan-out',
+      reason: `Fan-out: imports ${fanOut.metric} files`,
+    };
   }
 
   for (const hub of insightSet.hubs) {

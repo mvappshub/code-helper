@@ -55,7 +55,11 @@ export function createRenderer(state) {
     state.ctx.beginPath();
     state.ctx.arc(node.x, node.y, radius + 3 / state.scale, 0, Math.PI * 2);
     state.ctx.lineWidth = 2 / state.scale;
-    state.ctx.strokeStyle = overlay.category === 'cycle' ? '#ff5c57' : '#d7ba7d';
+    state.ctx.strokeStyle = overlay.category === 'cycle'
+      ? '#ff5c57'
+      : overlay.category === 'fan-out'
+        ? '#4fc1ff'
+        : '#d7ba7d';
     state.ctx.stroke();
   }
 
