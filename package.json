@@ -1,0 +1,191 @@
+{
+  "name": "codelens-arch-explorer",
+  "displayName": "CodeLens Architecture Explorer",
+  "description": "Real-time visualization of workspace file structure, code dependencies and line-count metrics.",
+  "version": "0.3.0",
+  "publisher": "codelens",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "files": [
+    "out/extension.js",
+    "out/analysis/**/*.js",
+    "out/model/**/*.js",
+    "out/util/**/*.js",
+    "out/watcher/**/*.js",
+    "out/webview/**/*.js",
+    "src/webview/assets/**",
+    "media/**/*.svg",
+    "README.md"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codeLensArchExplorer",
+          "title": "Architecture",
+          "icon": "media/architecture-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "codeLensArchExplorer": [
+        {
+          "id": "codeLensArchExplorer.sidebarView",
+          "name": "Architecture Graph",
+          "type": "webview"
+        },
+        {
+          "id": "codeLensArchExplorer.insightsView",
+          "name": "Architecture Insights",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "codeLensArchExplorer.focusSidebar",
+        "title": "CodeLens: Open Architecture Sidebar"
+      },
+      {
+        "command": "codeLensArchExplorer.showGraph",
+        "title": "CodeLens: Show Architecture Graph"
+      },
+      {
+        "command": "codeLensArchExplorer.refreshNow",
+        "title": "CodeLens: Force Refresh"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codeLensArchExplorer.refreshNow",
+          "when": "view == codeLensArchExplorer.sidebarView",
+          "group": "navigation"
+        },
+        {
+          "command": "codeLensArchExplorer.showGraph",
+          "when": "view == codeLensArchExplorer.sidebarView",
+          "group": "navigation@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CodeLens Architecture Explorer",
+      "properties": {
+        "codeLensArchExplorer.refreshIntervalSeconds": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "How often (in seconds) the graph auto-refreshes. Minimum: 1."
+        },
+        "codeLensArchExplorer.maxDepth": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Maximum directory depth to scan."
+        },
+        "codeLensArchExplorer.includePatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx", "**/*.py", "**/*.java", "**/*.cs", "**/*.go", "**/*.rs"],
+          "description": "Glob patterns for files to include in the graph."
+        },
+        "codeLensArchExplorer.excludePatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["**/node_modules/**", "**/dist/**", "**/out/**", "**/.git/**", "**/build/**", "**/__pycache__/**", "**/.vscode-test/**", "**/.vscode-test-web/**", "**/coverage/**", "**/.next/**", "**/.nuxt/**", "**/target/**", "**/.idea/**", "**/.vs/**", "**/.cache/**", "**/bin/**", "**/obj/**", "**/vendor/**", "**/fixtures/**", "**/__fixtures__/**", "**/test-fixtures/**", "**/*.min.js", "**/*.min.css", "**/*.bundle.js", "**/*.generated.{ts,js,tsx,jsx,cs,java}", "**/*.g.cs", "**/*.d.ts"],
+          "description": "Glob patterns for files to exclude."
+        },
+        "codeLensArchExplorer.maxFileLOC": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 100,
+          "maximum": 1000000,
+          "description": "Files above this line-count threshold are excluded from analysis unless explicitly re-included."
+        },
+        "codeLensArchExplorer.graphLayout": {
+          "type": "string",
+          "enum": ["force", "tree", "radial"],
+          "default": "force",
+          "description": "Graph layout algorithm: force-directed, tree, or radial."
+        },
+        "codeLensArchExplorer.locWarningThreshold": {
+          "type": "number",
+          "default": 500,
+          "minimum": 1,
+          "description": "Files exceeding this line count are highlighted as warnings in the graph."
+        },
+        "codeLensArchExplorer.locDangerThreshold": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 1,
+          "description": "Files exceeding this line count are highlighted as danger in the graph."
+        },
+        "codeLensArchExplorer.debugLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable verbose debug logging in the output channel."
+        },
+        "codeLensArchExplorer.entryPointPatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["**/extension.ts", "**/index.ts", "**/main.{py,go,rs}", "**/Program.cs", "**/Main.java"],
+          "description": "Glob patterns identifying entry-point files that must never appear in the Orphans list."
+        },
+        "codeLensArchExplorer.insights.topN": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 50,
+          "description": "Maximum number of items shown per insight category (hubs, bloated, orphans)."
+        },
+        "codeLensArchExplorer.insights.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable the Architecture Insights panel computation."
+        },
+        "codeLensArchExplorer.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show architecture cycle and bloated-file warnings in the native Problems panel."
+        },
+        "codeLensArchExplorer.boundaries": {
+          "type": "object",
+          "default": {
+            "layers": [],
+            "layerRules": [],
+            "maxRelativeDepth": 3,
+            "testPatterns": ["**/*.{test,spec}.{ts,tsx,js,jsx}", "**/test/**", "**/tests/**"],
+            "internalFolderNames": ["internal", "_internal", "private"]
+          },
+          "description": "Workspace-wide architectural boundary rules: layer rules, deep relative import threshold, test file patterns, and package-internal folder names."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package:vsix": "npx @vscode/vsce package",
+    "install:vsix": "code --install-extension codelens-arch-explorer-0.3.0.vsix",
+    "pretest": "npm run compile",
+    "test": "node ./out/test/runTests.js",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.3.3"
+  }
+}
