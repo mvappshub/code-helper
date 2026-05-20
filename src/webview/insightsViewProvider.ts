@@ -1,7 +1,7 @@
 /**
  * WebviewViewProvider for the Architecture Insights panel.
  *
- * Renders cycles, orphans, hubs, and bloated files as a structured list
+ * Renders cycles, orphans, hubs, bloated files, and additional signals as a structured list
  * inside the Architecture activity-bar container.
  *
  * Constitution II: every section answers an architectural question.
@@ -51,7 +51,7 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
 
   /**
    * Push an InsightSet to the webview.
-   * The webview re-renders the four sections with the new data.
+   * The webview re-renders the sections with the new data.
    */
   public update(data: InsightSet, config: InsightsConfig): void {
     if (!this.view) { return; }
@@ -66,7 +66,7 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
       },
     });
     this.logger.debug(
-      `InsightsViewProvider: pushed ${data.cycles.length} cycles, ${data.orphans.length} orphans, ${data.hubs.length} hubs, ${data.bloated.length} bloated, ${data.violations.length} boundary violations`
+      `InsightsViewProvider: pushed ${data.cycles.length} cycles, ${data.orphans.length} orphans, ${data.hubs.length} hubs, ${data.bloated.length} bloated, ${data.unresolved.length} unresolved, ${data.fanOut.length} fan-out, ${data.risky.length} risky, ${data.violations.length} boundary violations`
     );
   }
 
@@ -254,6 +254,30 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
     <div class="section-body collapsed" id="bloated-body"></div>
   </div>
 
+  <div class="section" data-category="unresolved">
+    <div class="section-header" data-toggle="unresolved">
+      <h3>🧩 Unresolved Imports</h3>
+      <span class="badge warn" id="unresolved-badge">0</span>
+    </div>
+    <div class="section-body collapsed" id="unresolved-body"></div>
+  </div>
+
+  <div class="section" data-category="fanOut">
+    <div class="section-header" data-toggle="fanOut">
+      <h3>🪄 Fan-Out</h3>
+      <span class="badge warn" id="fanOut-badge">0</span>
+    </div>
+    <div class="section-body collapsed" id="fanOut-body"></div>
+  </div>
+
+  <div class="section" data-category="risky">
+    <div class="section-header" data-toggle="risky">
+      <h3>🚨 Risky Modules</h3>
+      <span class="badge error" id="risky-badge">0</span>
+    </div>
+    <div class="section-body collapsed" id="risky-body"></div>
+  </div>
+
   <div class="section" data-category="layerViolations">
     <div class="section-header" data-toggle="layerViolations">
       <h3>⛔ Layer Violations</h3>
@@ -303,6 +327,9 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
     orphans:  { badge: document.getElementById('orphans-badge'),  body: document.getElementById('orphans-body')  },
     hubs:     { badge: document.getElementById('hubs-badge'),     body: document.getElementById('hubs-body')     },
     bloated:  { badge: document.getElementById('bloated-badge'),  body: document.getElementById('bloated-body')  },
+    unresolved: { badge: document.getElementById('unresolved-badge'), body: document.getElementById('unresolved-body') },
+    fanOut: { badge: document.getElementById('fanOut-badge'), body: document.getElementById('fanOut-body') },
+    risky: { badge: document.getElementById('risky-badge'), body: document.getElementById('risky-body') },
     layerViolations: { badge: document.getElementById('layerViolations-badge'), body: document.getElementById('layerViolations-body') },
     deepRelative: { badge: document.getElementById('deepRelative-badge'), body: document.getElementById('deepRelative-body') },
     reverseTest: { badge: document.getElementById('reverseTest-badge'), body: document.getElementById('reverseTest-body') },
@@ -314,6 +341,9 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
     orphans: 0,
     hubs: 0,
     bloated: 0,
+    unresolved: 0,
+    fanOut: 0,
+    risky: 0,
     layerViolations: 0,
     deepRelative: 0,
     reverseTest: 0,
@@ -368,7 +398,9 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
 
     if (key === 'cycles') {
       badge.className = insights.length > 0 ? 'badge error' : 'badge';
-    } else if (key === 'hubs' || key === 'bloated' || key === 'layerViolations' || key === 'deepRelative' || key === 'reverseTest' || key === 'packageInternal') {
+    } else if (key === 'risky') {
+      badge.className = insights.length > 0 ? 'badge error' : 'badge';
+    } else if (key === 'hubs' || key === 'bloated' || key === 'unresolved' || key === 'fanOut' || key === 'layerViolations' || key === 'deepRelative' || key === 'reverseTest' || key === 'packageInternal') {
       badge.className = insights.length > 0 ? 'badge warn' : 'badge';
     }
 
@@ -455,6 +487,9 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
       renderSection('orphans',  d.orphans,  'No orphans detected');
       renderSection('hubs',     d.hubs,     'No hub files detected');
       renderSection('bloated',  d.bloated,  'No bloated files detected');
+      renderSection('unresolved', d.unresolved, 'No unresolved local imports detected');
+      renderSection('fanOut', d.fanOut, 'No high fan-out files detected');
+      renderSection('risky', d.risky, 'No risky modules detected');
       renderSection('layerViolations', d.violations.filter(function (v) { return v.category === 'layerViolation'; }), 'No layer violations detected');
       renderSection('deepRelative', d.violations.filter(function (v) { return v.category === 'deepRelative'; }), 'No deep relative imports detected');
       renderSection('reverseTest', d.violations.filter(function (v) { return v.category === 'reverseTest'; }), 'No reverse test imports detected');

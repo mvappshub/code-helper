@@ -16,18 +16,24 @@ import { matchesPatterns } from '../../util/fileMatcher';
 
 // Helper to build a minimal GraphData
 function makeGraph(
-  specs: { id: string; loc?: number }[],
+  specs: { id: string; loc?: number; unresolved?: string[] }[],
   edgeSpecs: Array<[string, string] | { source: string; target: string; sourceLine?: number; specifier?: string }>
 ): GraphData {
-  const nodes: GraphNode[] = specs.map((s) => ({
-    id: s.id,
-    path: `/ws/${s.id}`,
-    language: 'ts',
-    linesOfCode: s.loc ?? 10,
-    lastModified: new Date().toISOString(),
-    depth: s.id.split('/').length - 1,
-    label: s.id.split('/').pop() ?? s.id,
-  }));
+  const nodes: GraphNode[] = specs.map((s) => {
+    const node: GraphNode & { _unresolvedImports?: string[] } = {
+      id: s.id,
+      path: `/ws/${s.id}`,
+      language: 'ts',
+      linesOfCode: s.loc ?? 10,
+      lastModified: new Date().toISOString(),
+      depth: s.id.split('/').length - 1,
+      label: s.id.split('/').pop() ?? s.id,
+    };
+    if (s.unresolved) {
+      node._unresolvedImports = s.unresolved;
+    }
+    return node;
+  });
   const edges: GraphEdge[] = edgeSpecs.map((edgeSpec) => {
     if (Array.isArray(edgeSpec)) {
       return {
@@ -139,6 +145,9 @@ suite('computeInsights', () => {
     assert.strictEqual(result.orphans.length, 0);
     assert.strictEqual(result.hubs.length, 0);
     assert.strictEqual(result.bloated.length, 0);
+    assert.strictEqual(result.unresolved.length, 0);
+    assert.strictEqual(result.fanOut.length, 0);
+    assert.strictEqual(result.risky.length, 0);
     assert.strictEqual(result.violations.length, 0);
   });
 
@@ -199,6 +208,22 @@ suite('computeInsights', () => {
     assert.strictEqual(result.hubs[0].nodes[0], 'hub.ts');
   });
 
+  test('fan-out ranking by outgoing degree descending', () => {
+    const data = makeGraph(
+      [
+        { id: 'orchestrator.ts' },
+        { id: 'leaf-a.ts' },
+        { id: 'leaf-b.ts' },
+        { id: 'leaf-c.ts' },
+      ],
+      [['orchestrator.ts', 'leaf-a.ts'], ['orchestrator.ts', 'leaf-b.ts'], ['orchestrator.ts', 'leaf-c.ts']]
+    );
+    const result = computeInsights(data, defaultOpts);
+    assert.strictEqual(result.fanOut.length, 1);
+    assert.strictEqual(result.fanOut[0].nodes[0], 'orchestrator.ts');
+    assert.strictEqual(result.fanOut[0].metric, 3);
+  });
+
   test('self-loop-only file is still considered an orphan and not a hub', () => {
     const data = makeGraph([{ id: 'self.ts' }], [['self.ts', 'self.ts']]);
     const result = computeInsights(data, defaultOpts);
@@ -253,6 +278,51 @@ suite('computeInsights', () => {
     const result = computeInsights(data, defaultOpts);
     assert.ok(result.computedAt);
     assert.ok(!isNaN(Date.parse(result.computedAt)));
+  });
+
+  test('unresolved imports create warning insight per node', () => {
+    const data = makeGraph(
+      [{ id: 'src/a.ts', unresolved: ['./missing', '../lost'] }],
+      []
+    );
+    const result = computeInsights(data, defaultOpts);
+
+    assert.strictEqual(result.unresolved.length, 1);
+    assert.strictEqual(result.unresolved[0].category, 'unresolved');
+    assert.strictEqual(result.unresolved[0].severity, 'warn');
+    assert.strictEqual(result.unresolved[0].metric, 2);
+    assert.ok(result.unresolved[0].description?.includes('./missing'));
+  });
+
+  test('risky modules aggregate multiple strong signals without score', () => {
+    const data = makeGraph(
+      [
+        { id: 'src/core/risky.ts', loc: 1200 },
+        { id: 'src/core/peer.ts', loc: 100 },
+      ],
+      [
+        { source: 'src/core/risky.ts', target: 'src/core/peer.ts', sourceLine: 3, specifier: './peer' },
+        { source: 'src/core/peer.ts', target: 'src/core/risky.ts', sourceLine: 5, specifier: './risky' },
+      ]
+    );
+    const result = computeInsights(data, {
+      ...defaultOpts,
+      boundaries: {
+        ...defaultOpts.boundaries,
+        layers: [
+          { name: 'core', match: ['src/core/**'] },
+          { name: 'forbidden', match: ['src/core/peer.ts'] },
+        ],
+        layerRules: [{ from: 'core', cannotImport: ['forbidden'] }],
+      },
+    });
+
+    const risky = result.risky.find((entry) => entry.nodes[0] === 'src/core/risky.ts');
+    assert.ok(risky);
+    assert.strictEqual(risky?.category, 'risky');
+    assert.strictEqual(risky?.severity, 'error');
+    assert.ok((risky?.description ?? '').includes('Part of a dependency cycle'));
+    assert.ok((risky?.description ?? '').includes('Large module (1200 LOC)'));
   });
 
   test('layer deny rule reports ui -> db violation', () => {

@@ -107,7 +107,7 @@ export class GraphController implements vscode.Disposable {
       if (!this.lastInsightSet || this.lastInsightCacheKey !== cacheKey) {
         this.lastInsightSet = computeInsights(this.currentData, opts);
         this.lastInsightCacheKey = cacheKey;
-        this.logger.debug(`GraphController: Insights recomputed — ${this.lastInsightSet.cycles.length} cycles, ${this.lastInsightSet.orphans.length} orphans, ${this.lastInsightSet.hubs.length} hubs, ${this.lastInsightSet.bloated.length} bloated, ${this.lastInsightSet.violations.length} boundary violations`);
+        this.logger.debug(`GraphController: Insights recomputed — ${this.lastInsightSet.cycles.length} cycles, ${this.lastInsightSet.orphans.length} orphans, ${this.lastInsightSet.hubs.length} hubs, ${this.lastInsightSet.bloated.length} bloated, ${this.lastInsightSet.unresolved.length} unresolved, ${this.lastInsightSet.fanOut.length} fan-out, ${this.lastInsightSet.risky.length} risky, ${this.lastInsightSet.violations.length} boundary violations`);
       }
       return this.lastInsightSet;
     } catch {

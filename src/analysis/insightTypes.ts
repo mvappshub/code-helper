@@ -8,7 +8,11 @@
 import { GraphData } from '../model/graphTypes';
 import { BoundaryConfig, BoundaryViolation, computeBoundaryViolations } from './boundaryRules';
 
-export type InsightCategory = 'cycle' | 'orphan' | 'hub' | 'bloated';
+type GraphNodeWithMeta = GraphData['nodes'][number] & {
+  _unresolvedImports?: string[];
+};
+
+export type InsightCategory = 'cycle' | 'orphan' | 'hub' | 'bloated' | 'unresolved' | 'fan-out' | 'risky';
 export type InsightSeverity = 'info' | 'warn' | 'error';
 
 /** A single architectural finding computed from the current GraphData snapshot. */
@@ -32,6 +36,9 @@ export interface InsightSet {
   orphans: Insight[];
   hubs: Insight[];
   bloated: Insight[];
+  unresolved: Insight[];
+  fanOut: Insight[];
+  risky: Insight[];
   violations: BoundaryViolation[];
   /** ISO timestamp when this set was computed. */
   computedAt: string;
@@ -151,12 +158,15 @@ export function computeInsights(data: GraphData, options: ComputeOptions): Insig
     .map((e) => [e.source, e.target]);
 
   const incomingFromOtherFiles = new Map<string, number>();
+  const outgoingToOtherFiles = new Map<string, number>();
   for (const nodeId of nodeIds) {
     incomingFromOtherFiles.set(nodeId, 0);
+    outgoingToOtherFiles.set(nodeId, 0);
   }
   for (const [src, tgt] of edgePairs) {
     if (src === tgt) { continue; }
     incomingFromOtherFiles.set(tgt, (incomingFromOtherFiles.get(tgt) ?? 0) + 1);
+    outgoingToOtherFiles.set(src, (outgoingToOtherFiles.get(src) ?? 0) + 1);
   }
 
   // --- Cycles (via Tarjan SCC) ---
@@ -238,16 +248,100 @@ export function computeInsights(data: GraphData, options: ComputeOptions): Insig
   bloated.sort((a, b) => b.metric - a.metric);
   bloated.splice(topN);
 
+  // --- Unresolved local imports (stored as internal node metadata) ---
+  const unresolved: Insight[] = [];
+  for (const node of data.nodes) {
+    const unresolvedImports = (node as GraphNodeWithMeta)._unresolvedImports ?? [];
+    if (unresolvedImports.length === 0) { continue; }
+    unresolved.push({
+      category: 'unresolved',
+      title: `${node.id}`,
+      nodes: [node.id],
+      severity: 'warn',
+      metric: unresolvedImports.length,
+      description: `Unresolved local imports: ${unresolvedImports.join(', ')}`,
+    });
+  }
+  unresolved.sort((a, b) => b.metric - a.metric);
+  unresolved.splice(topN);
+
+  // --- Fan-out (top-N by outgoing import count) ---
+  const fanOut: Insight[] = [];
+  for (const node of data.nodes) {
+    const deg = outgoingToOtherFiles.get(node.id) ?? 0;
+    if (deg > 0) {
+      fanOut.push({
+        category: 'fan-out',
+        title: `${node.id}`,
+        nodes: [node.id],
+        severity: 'warn',
+        metric: deg,
+        description: `Imports ${deg} files — candidate for splitting orchestration from implementation.`,
+      });
+    }
+  }
+  fanOut.sort((a, b) => b.metric - a.metric);
+  fanOut.splice(topN);
+
   const violations = computeBoundaryViolations(data, options.boundaries, {
     fileMatcher,
     warn: options.warn,
   });
+
+  // --- Risky modules (2+ strong signals, no numeric score) ---
+  const riskyReasons = new Map<string, string[]>();
+  const pushReason = (nodeId: string, reason: string): void => {
+    const existing = riskyReasons.get(nodeId) ?? [];
+    existing.push(reason);
+    riskyReasons.set(nodeId, existing);
+  };
+
+  for (const cycle of cycles) {
+    for (const nodeId of cycle.nodes) {
+      pushReason(nodeId, 'Part of a dependency cycle');
+    }
+  }
+
+  for (const insight of bloated.filter((entry) => entry.severity === 'error')) {
+    pushReason(insight.nodes[0], `Large module (${insight.metric} LOC)`);
+  }
+
+  for (const violation of violations.filter((entry) => entry.category === 'layerViolation')) {
+    pushReason(violation.sourceId, 'Layer boundary violation');
+  }
+
+  const hubIds = new Set(hubs.map((insight) => insight.nodes[0]));
+  for (const insight of fanOut) {
+    const nodeId = insight.nodes[0];
+    if (!hubIds.has(nodeId)) { continue; }
+    const fanIn = incomingFromOtherFiles.get(nodeId) ?? 0;
+    pushReason(nodeId, `High fan-in (${fanIn}) and fan-out (${insight.metric})`);
+  }
+
+  const risky: Insight[] = [];
+  for (const node of data.nodes) {
+    const reasons = riskyReasons.get(node.id) ?? [];
+    if (reasons.length < 2) { continue; }
+    risky.push({
+      category: 'risky',
+      title: `${node.id}`,
+      nodes: [node.id],
+      severity: 'error',
+      metric: reasons.length,
+      description: `Reasons: ${reasons.join('; ')}`,
+    });
+  }
+  risky.sort((a, b) => b.metric - a.metric || a.title.localeCompare(b.title));
+  risky.splice(topN);
 
   return {
     cycles,
     orphans: orphans.slice(0, topN),
     hubs,
     bloated,
+    unresolved,
+    fanOut,
+    risky,
     violations,
     computedAt: new Date().toISOString(),
   };
