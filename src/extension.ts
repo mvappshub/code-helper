@@ -14,7 +14,8 @@ import { ArchGraphViewProvider } from './webview/webviewViewProvider';
 import { InsightsViewProvider } from './webview/insightsViewProvider';
 import { insightSetToDiagnostics } from './analysis/diagnostics';
 import { GraphData } from './model/graphTypes';
-import { InsightSet } from './analysis/insightTypes';
+import { InsightSet, InsightSeverity } from './analysis/insightTypes';
+import { buildInsightsAgentReport } from './analysis/insightReport';
 
 let controller: GraphController | undefined;
 let panel: ArchGraphPanel | undefined;
@@ -23,6 +24,16 @@ let insightsView: InsightsViewProvider | undefined;
 let logger: Logger | undefined;
 let diagnostics: vscode.DiagnosticCollection | undefined;
 let webviewErrorShown = false;
+const DEFAULT_ENTRY_POINT_PATTERNS = [
+  '**/extension.ts',
+  '**/index.ts',
+  '**/main.{py,go,rs}',
+  '**/Program.cs',
+  '**/Main.java',
+  '**/*.test.{ts,tsx,js,jsx}',
+  '**/runTests.ts',
+  '**/webview/assets/graph-main.js',
+];
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const channel = vscode.window.createOutputChannel('CodeLens Architecture Explorer');
@@ -107,7 +118,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
-  context.subscriptions.push(showGraphCmd, openGraphPanelCmd, refreshNowCmd, channel);
+  const exportInsightsReportCmd = vscode.commands.registerCommand(
+    'codeLensArchExplorer.exportInsightsReport',
+    async () => {
+      await exportInsightsReport();
+    }
+  );
+
+  const copyInsightsReportCmd = vscode.commands.registerCommand(
+    'codeLensArchExplorer.copyInsightsReport',
+    async () => {
+      await copyInsightsReport();
+    }
+  );
+
+  context.subscriptions.push(
+    showGraphCmd,
+    openGraphPanelCmd,
+    refreshNowCmd,
+    exportInsightsReportCmd,
+    copyInsightsReportCmd,
+    channel
+  );
 
   // ─── Start controller and warm sidebar data ─────────────────────────────
 
@@ -124,9 +156,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const topN = cfg.get<number>('insights.topN', 10);
       const locWarning = cfg.get<number>('locWarningThreshold', 500);
       const locDanger = cfg.get<number>('locDangerThreshold', 1000);
-      const entryPointPatterns = cfg.get<string[]>('entryPointPatterns', [
-        '**/extension.ts', '**/index.ts', '**/main.{py,go,rs}', '**/Program.cs', '**/Main.java',
-      ]);
+      const entryPointPatterns = cfg.get<string[]>('entryPointPatterns', DEFAULT_ENTRY_POINT_PATTERNS);
       if (!enabled) {
         insightsView.showDisabled({
           topN,
@@ -213,11 +243,97 @@ function updateDiagnostics(data: GraphData, insights: InsightSet | null): void {
       const diagnostic = new vscode.Diagnostic(
         new vscode.Range(Math.max(0, (entry.line ?? 1) - 1), 0, Math.max(0, (entry.line ?? 1) - 1), 80),
         entry.message,
-        vscode.DiagnosticSeverity.Warning
+        mapDiagnosticSeverity(entry.severity)
       );
       diagnostic.code = entry.code;
       diagnostic.source = entry.source;
       return diagnostic;
     }),
   ]));
+}
+
+async function exportInsightsReport(): Promise<void> {
+  const report = getInsightsReportPayload();
+  if (!report) {
+    return;
+  }
+
+  const defaultUri = vscode.Uri.file(path.join(
+    report.workspaceRoot ?? process.cwd(),
+    `architecture-insights-report-${formatFileTimestamp(new Date())}.md`
+  ));
+
+  const targetUri = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+    },
+    saveLabel: 'Export Architecture Insights Report',
+  });
+
+  if (!targetUri) {
+    return;
+  }
+
+  await vscode.workspace.fs.writeFile(targetUri, Buffer.from(report.markdown, 'utf8'));
+  void vscode.window.showInformationMessage(`Architecture insights report exported to ${targetUri.fsPath}`);
+}
+
+async function copyInsightsReport(): Promise<void> {
+  const report = getInsightsReportPayload();
+  if (!report) {
+    return;
+  }
+
+  await vscode.env.clipboard.writeText(report.markdown);
+  void vscode.window.showInformationMessage('Architecture insights report copied to clipboard.');
+}
+
+function getInsightsReportPayload(): { markdown: string; workspaceRoot: string | null } | null {
+  if (!controller) {
+    void vscode.window.showWarningMessage('Architecture insights are not ready yet.');
+    return null;
+  }
+
+  if (!controller.areInsightsEnabled()) {
+    void vscode.window.showWarningMessage('Architecture insights export is unavailable because insights are disabled in settings.');
+    return null;
+  }
+
+  const insights = controller.getInsights();
+  if (!insights) {
+    void vscode.window.showWarningMessage('Architecture insights are not ready yet. Wait for the workspace scan to complete and try again.');
+    return null;
+  }
+
+  const graph = controller.getData();
+  const workspaceRoot = controller.getWorkspaceRoot();
+  return {
+    markdown: buildInsightsAgentReport({
+      graph,
+      insights,
+      config: controller.getInsightReportConfigSnapshot(),
+      metadata: {
+        workspaceRoot,
+        generatedAt: new Date().toISOString(),
+      },
+    }),
+    workspaceRoot,
+  };
+}
+
+function formatFileTimestamp(date: Date): string {
+  return date.toISOString().replace(/[:.]/g, '-');
+}
+
+function mapDiagnosticSeverity(severity: InsightSeverity): vscode.DiagnosticSeverity {
+  switch (severity) {
+    case 'error':
+      return vscode.DiagnosticSeverity.Error;
+    case 'info':
+      return vscode.DiagnosticSeverity.Information;
+    case 'warn':
+    default:
+      return vscode.DiagnosticSeverity.Warning;
+  }
 }

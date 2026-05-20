@@ -9,7 +9,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { GraphData, GraphEdge, GraphNode, emptyGraph } from '../model/graphTypes';
 import { detectLanguage } from './languageDetector';
-import { RawImport, extractImports, resolveSpecifier } from './importExtractor';
+import { extractImports, resolveSpecifier } from './importExtractor';
+import { RawImport } from './extractors/types';
 import { Logger } from '../util/logger';
 import { ResolvedScanConfig, shouldIncludeFileContent, isWithinMaxDepth } from './scanPolicy';
 

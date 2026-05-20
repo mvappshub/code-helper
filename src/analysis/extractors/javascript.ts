@@ -1,4 +1,4 @@
-import type { RawImport } from '../importExtractor';
+import type { RawImport } from './types';
 import { isWordAt, lineNumberAt, readJsString, skipJsTemplateLiteral, skipJsTrivia } from './shared';
 
 export function extractJavascriptImports(content: string): RawImport[] {

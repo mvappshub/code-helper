@@ -1,4 +1,4 @@
-import type { RawImport } from '../importExtractor';
+import type { RawImport } from './types';
 import { lineNumberAt } from './shared';
 import { stripComments } from './stripComments';
 

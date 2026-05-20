@@ -16,6 +16,18 @@ import { matchesPatterns } from '../util/fileMatcher';
 import { InsightSet, computeInsights, ComputeOptions } from '../analysis/insightTypes';
 import { mergeExcludePatterns, ResolvedScanConfig, pathMatchesScan } from '../analysis/scanPolicy';
 import { BoundaryConfig } from '../analysis/boundaryRules';
+import { InsightReportConfigSnapshot } from '../analysis/insightReport';
+
+const DEFAULT_ENTRY_POINT_PATTERNS = [
+  '**/extension.ts',
+  '**/index.ts',
+  '**/main.{py,go,rs}',
+  '**/Program.cs',
+  '**/Main.java',
+  '**/*.test.{ts,tsx,js,jsx}',
+  '**/runTests.ts',
+  '**/webview/assets/graph-main.js',
+];
 
 export type GraphUpdateListener = (data: GraphData, insights: InsightSet | null) => void;
 
@@ -211,6 +223,17 @@ export class GraphController implements vscode.Disposable {
     return this.workspaceRoot;
   }
 
+  public getInsightReportConfigSnapshot(): InsightReportConfigSnapshot {
+    const options = this.getInsightOptions();
+    return {
+      topN: options.topN,
+      locWarningThreshold: options.locWarningThreshold,
+      locDangerThreshold: options.locDangerThreshold,
+      entryPointPatterns: [...options.entryPointPatterns],
+      boundaries: options.boundaries,
+    };
+  }
+
   // ─── Config helper ──────────────────────────────────────────────────────
 
   private getConfig(): ResolvedScanConfig {
@@ -240,10 +263,7 @@ export class GraphController implements vscode.Disposable {
       topN: cfg.get<number>('insights.topN', 10),
       locWarningThreshold: cfg.get<number>('locWarningThreshold', 500),
       locDangerThreshold: cfg.get<number>('locDangerThreshold', 1000),
-      entryPointPatterns: cfg.get<string[]>('entryPointPatterns', [
-        '**/extension.ts', '**/index.ts', '**/main.{py,go,rs}',
-        '**/Program.cs', '**/Main.java',
-      ]),
+      entryPointPatterns: cfg.get<string[]>('entryPointPatterns', DEFAULT_ENTRY_POINT_PATTERNS),
       fileMatcher: matchesPatterns,
       boundaries: cfg.get<BoundaryConfig>('boundaries'),
       warn: (key: string, message: string) => {

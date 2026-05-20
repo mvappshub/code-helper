@@ -19,13 +19,14 @@
 2. Click the **Architecture** icon in the VS Code Activity Bar
 3. Open **Architecture Graph** in the sidebar and watch it refresh automatically
 4. Optional: run **CodeLens: Show Architecture Graph** from the Command Palette (`Ctrl+Shift+P`) if you also want the graph in a separate editor panel
+5. Use **CodeLens: Export Architecture Insights Report** or **CodeLens: Copy Architecture Insights Report** to generate an AI-ready Markdown brief from the current insights snapshot
 
 ## Installation
 
 1. Run `npm run package:vsix`
 2. In VS Code open Extensions view
 3. Use `...` -> `Install from VSIX...`
-4. Select `codelens-arch-explorer-0.3.0.vsix`
+4. Select `codelens-arch-explorer-0.4.1.vsix`
 
 ## Settings
 
@@ -44,6 +45,15 @@
 | `codeLensArchExplorer.boundaries` | object | Configures layer rules, relative-depth threshold, test patterns, and internal folder names |
 
 Insights sections remain visible with badge `0` and an empty-state message when no findings are present, including boundary categories.
+
+## AI Report Export
+
+The **Architecture Insights** view toolbar now includes actions to copy or export an AI-ready Markdown report. The report is designed to be pasted directly into an AI coding agent and includes:
+
+- current graph and insight timestamps
+- analysis thresholds and boundary configuration summary
+- findings grouped by category with concrete evidence
+- review questions for an engineering-focused AI audit
 
 ### Boundary rule example
 

@@ -6,11 +6,7 @@ import { extractJavascriptImports } from './extractors/javascript';
 import { extractPythonImports } from './extractors/python';
 import { extractRustImports } from './extractors/rust';
 import { stripComments } from './extractors/stripComments';
-
-export interface RawImport {
-  specifier: string;
-  sourceLine?: number;
-}
+import { RawImport } from './extractors/types';
 
 type ExtractorFn = (content: string) => RawImport[];
 

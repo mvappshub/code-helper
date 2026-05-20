@@ -1,11 +1,12 @@
 import { GraphData } from '../model/graphTypes';
-import { InsightSet } from './insightTypes';
+import { InsightSet, InsightSeverity } from './insightTypes';
 
 export interface DiagnosticDescriptor {
   path: string;
   message: string;
   code: 'arch.cycle' | 'arch.bloated' | 'arch.layerViolation' | 'arch.deepRelative' | 'arch.reverseTest' | 'arch.packageInternal';
   source: 'CodeLens Architecture';
+  severity: InsightSeverity;
   line?: number;
 }
 
@@ -35,6 +36,7 @@ export function insightSetToDiagnostics(
         message,
         code: 'arch.cycle',
         source: 'CodeLens Architecture',
+        severity: cycle.severity,
         line: 1,
       });
     }
@@ -45,12 +47,13 @@ export function insightSetToDiagnostics(
     const node = nodesById.get(nodeId);
     if (!node) { continue; }
     pushDiagnostic(payload, node.path, {
-      path: node.path,
-      message: `File has ${node.linesOfCode} lines of code (above danger threshold ${locDangerThreshold})`,
-      code: 'arch.bloated',
-      source: 'CodeLens Architecture',
-      line: 1,
-    });
+        path: node.path,
+        message: `File has ${node.linesOfCode} lines of code (above danger threshold ${locDangerThreshold})`,
+        code: 'arch.bloated',
+        source: 'CodeLens Architecture',
+        severity: bloated.severity,
+        line: 1,
+      });
   }
 
   for (const violation of insightSet.violations) {
@@ -59,6 +62,7 @@ export function insightSetToDiagnostics(
       message: violation.title,
       code: violationCodeForCategory(violation.category),
       source: 'CodeLens Architecture',
+      severity: 'warn',
       line: violation.sourceLine,
     });
   }

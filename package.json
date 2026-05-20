@@ -155,7 +155,7 @@
         "codeLensArchExplorer.entryPointPatterns": {
           "type": "array",
           "items": { "type": "string" },
-          "default": ["**/extension.ts", "**/index.ts", "**/main.{py,go,rs}", "**/Program.cs", "**/Main.java"],
+          "default": ["**/extension.ts", "**/index.ts", "**/main.{py,go,rs}", "**/Program.cs", "**/Main.java", "**/*.test.{ts,tsx,js,jsx}", "**/runTests.ts", "**/webview/assets/graph-main.js"],
           "description": "Glob patterns identifying entry-point files that must never appear in the Orphans list."
         },
         "codeLensArchExplorer.insights.topN": {

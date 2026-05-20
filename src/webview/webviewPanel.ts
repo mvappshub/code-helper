@@ -12,6 +12,17 @@ import { Logger } from '../util/logger';
 import { getWebviewHtml } from './webviewHtml';
 import { InsightSet } from '../analysis/insightTypes';
 
+const DEFAULT_ENTRY_POINT_PATTERNS = [
+  '**/extension.ts',
+  '**/index.ts',
+  '**/main.{py,go,rs}',
+  '**/Program.cs',
+  '**/Main.java',
+  '**/*.test.{ts,tsx,js,jsx}',
+  '**/runTests.ts',
+  '**/webview/assets/graph-main.js',
+];
+
 export class ArchGraphPanel implements vscode.Disposable {
   public static readonly viewType = 'codeLensArchExplorer.graph';
 
@@ -55,10 +66,7 @@ export class ArchGraphPanel implements vscode.Disposable {
       .get<string>('graphLayout', 'force');
     const entryPointPatterns = vscode.workspace
       .getConfiguration('codeLensArchExplorer')
-      .get<string[]>('entryPointPatterns', [
-        '**/extension.ts', '**/index.ts', '**/main.{py,go,rs}',
-        '**/Program.cs', '**/Main.java',
-      ]);
+      .get<string[]>('entryPointPatterns', DEFAULT_ENTRY_POINT_PATTERNS);
 
     this.panel.webview.postMessage({
       type: 'update',

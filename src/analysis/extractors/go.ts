@@ -1,4 +1,4 @@
-import type { RawImport } from '../importExtractor';
+import type { RawImport } from './types';
 import { consumeQuoted, isWordAt, lineNumberAt } from './shared';
 
 export function extractGoImports(content: string): RawImport[] {

@@ -4,6 +4,17 @@ import { Logger } from '../util/logger';
 import { getWebviewHtml } from './webviewHtml';
 import { InsightSet } from '../analysis/insightTypes';
 
+const DEFAULT_ENTRY_POINT_PATTERNS = [
+  '**/extension.ts',
+  '**/index.ts',
+  '**/main.{py,go,rs}',
+  '**/Program.cs',
+  '**/Main.java',
+  '**/*.test.{ts,tsx,js,jsx}',
+  '**/runTests.ts',
+  '**/webview/assets/graph-main.js',
+];
+
 export class ArchGraphViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   public static readonly viewType = 'codeLensArchExplorer.sidebarView';
 
@@ -52,10 +63,7 @@ export class ArchGraphViewProvider implements vscode.WebviewViewProvider, vscode
       .get<string>('graphLayout', 'force');
     const entryPointPatterns = vscode.workspace
       .getConfiguration('codeLensArchExplorer')
-      .get<string[]>('entryPointPatterns', [
-        '**/extension.ts', '**/index.ts', '**/main.{py,go,rs}',
-        '**/Program.cs', '**/Main.java',
-      ]);
+      .get<string[]>('entryPointPatterns', DEFAULT_ENTRY_POINT_PATTERNS);
 
     void this.view.webview.postMessage({
       type: 'update',
