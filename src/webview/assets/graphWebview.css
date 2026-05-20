@@ -35,6 +35,68 @@ body {
 #toolbar button:hover,
 #empty-state button:hover { opacity: 0.85; }
 
+.icon-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, #007fd4);
+  outline-offset: 1px;
+}
+
+.icon-button[data-tooltip]:hover::after,
+.icon-button[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--vscode-editorHoverWidget-background, #252526);
+  border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-editor-foreground, #d4d4d4));
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.icon-button[data-tooltip]:hover::before,
+.icon-button[data-tooltip]:focus-visible::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  width: 8px;
+  height: 8px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--vscode-editorHoverWidget-background, #252526);
+  border-left: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  border-top: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+  z-index: 19;
+  pointer-events: none;
+}
+
 #layout-select,
 #search-input {
   background: var(--vscode-input-background, #3c3c3c);

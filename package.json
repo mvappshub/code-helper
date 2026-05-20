@@ -2,7 +2,7 @@
   "name": "codelens-arch-explorer",
   "displayName": "CodeLens Architecture Explorer",
   "description": "Real-time visualization of workspace file structure, code dependencies and line-count metrics.",
-  "version": "0.3.0",
+  "version": "0.4.2",
   "publisher": "codelens",
   "engines": {
     "vscode": "^1.85.0"
@@ -52,11 +52,23 @@
       },
       {
         "command": "codeLensArchExplorer.showGraph",
-        "title": "CodeLens: Show Architecture Graph"
+        "title": "CodeLens: Show Architecture Graph",
+        "icon": "$(open-preview)"
       },
       {
         "command": "codeLensArchExplorer.refreshNow",
-        "title": "CodeLens: Force Refresh"
+        "title": "CodeLens: Force Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codeLensArchExplorer.exportInsightsReport",
+        "title": "CodeLens: Export Architecture Insights Report",
+        "icon": "$(export)"
+      },
+      {
+        "command": "codeLensArchExplorer.copyInsightsReport",
+        "title": "CodeLens: Copy Architecture Insights Report",
+        "icon": "$(copy)"
       }
     ],
     "menus": {
@@ -69,6 +81,16 @@
         {
           "command": "codeLensArchExplorer.showGraph",
           "when": "view == codeLensArchExplorer.sidebarView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "codeLensArchExplorer.copyInsightsReport",
+          "when": "view == codeLensArchExplorer.insightsView",
+          "group": "navigation"
+        },
+        {
+          "command": "codeLensArchExplorer.exportInsightsReport",
+          "when": "view == codeLensArchExplorer.insightsView",
           "group": "navigation@1"
         }
       ]
@@ -172,7 +194,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package:vsix": "npx @vscode/vsce package",
-    "install:vsix": "code --install-extension codelens-arch-explorer-0.3.0.vsix",
+    "install:vsix": "code --install-extension codelens-arch-explorer-0.4.2.vsix",
     "pretest": "npm run compile",
     "test": "node ./out/test/runTests.js",
     "lint": "eslint src --ext ts"

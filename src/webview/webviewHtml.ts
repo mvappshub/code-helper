@@ -31,7 +31,18 @@ export function getWebviewHtml(
       <option value="tree">Tree</option>
       <option value="radial">Radial</option>
     </select>
-    <button id="btn-fit">Fit view</button>
+    <button
+      id="btn-fit"
+      class="icon-button"
+      type="button"
+      aria-label="Fit graph to view"
+      data-tooltip="Fit graph to view"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M1.5 6V1.5H6M10 1.5h4.5V6M14.5 10v4.5H10M6 14.5H1.5V10" />
+        <path d="M5 5 1.5 1.5M11 5l3.5-3.5M11 11l3.5 3.5M5 11l-3.5 3.5" />
+      </svg>
+    </button>
     <input id="search-input" type="text" placeholder="Search nodes…" />
     <span id="status">—</span>
   </div>
