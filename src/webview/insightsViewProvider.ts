@@ -6,6 +6,7 @@
  */
 
 import * as vscode from 'vscode';
+import { BoundaryConfigSummary } from '../analysis/boundaryRules';
 import { InsightSet } from '../analysis/insightTypes';
 import { Logger } from '../util/logger';
 import { getInsightsHtml } from './insightsHtml';
@@ -15,6 +16,7 @@ export interface InsightsConfig {
   locWarning: number;
   locDanger: number;
   entryPointPatterns: string[];
+  boundaries: BoundaryConfigSummary;
 }
 
 export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
@@ -57,6 +59,7 @@ export class InsightsViewProvider implements vscode.WebviewViewProvider, vscode.
         locWarning: config.locWarning,
         locDanger: config.locDanger,
         entryPointPatterns: config.entryPointPatterns,
+        boundaries: config.boundaries,
       },
     });
 

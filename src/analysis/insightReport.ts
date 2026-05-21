@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { BoundaryConfig, resolveBoundaryConfig } from './boundaryRules';
+import { BoundaryConfig, resolveBoundaryConfig, summarizeBoundaryConfig } from './boundaryRules';
 import { Insight, InsightSet } from './insightTypes';
 import { GraphData } from '../model/graphTypes';
 
@@ -46,6 +46,7 @@ export function buildInsightsAgentReport(input: InsightReportInput): string {
   const importEdgeCount = graph.edges.filter((edge) => edge.type === 'import').length;
   const totalFindings = countFindings(insights);
   const boundaries = resolveBoundaryConfig(config.boundaries);
+  const boundarySummary = summarizeBoundaryConfig(config.boundaries);
 
   const lines: string[] = [
     '# Architecture Insights Review Brief',
@@ -73,6 +74,7 @@ export function buildInsightsAgentReport(input: InsightReportInput): string {
     `- Entry point patterns: ${formatInlineList(config.entryPointPatterns)}`,
     `- Boundary layers configured: ${boundaries.layers.length}`,
     `- Boundary rules configured: ${boundaries.layerRules.length}`,
+    `- Layer checks active: ${boundarySummary.layerChecksActive ? 'yes' : 'no'}`,
     `- Max relative import depth: ${boundaries.maxRelativeDepth}`,
     `- Test patterns: ${formatInlineList(boundaries.testPatterns)}`,
     `- Internal folder names: ${formatInlineList(boundaries.internalFolderNames)}`,
@@ -92,6 +94,14 @@ export function buildInsightsAgentReport(input: InsightReportInput): string {
     '',
   ];
 
+  if (!boundarySummary.layerChecksActive) {
+    lines.push(
+      'Layer checks are currently inactive because boundaries.layers or boundaries.layerRules are not configured.',
+      'Treat "0 layer violations" as "not evaluated yet", not as proof that layer boundaries are clean.',
+      ''
+    );
+  }
+
   if (totalFindings === 0) {
     lines.push(
       '## No Findings Detected',
@@ -107,6 +117,10 @@ export function buildInsightsAgentReport(input: InsightReportInput): string {
     if (section.key === 'violations') {
       const violations = insights.violations;
       if (violations.length === 0) {
+        if (!boundarySummary.layerChecksActive) {
+          lines.push('Layer checks inactive — configure boundaries.layers and boundaries.layerRules.', '');
+          continue;
+        }
         lines.push(section.emptyLabel, '');
         continue;
       }

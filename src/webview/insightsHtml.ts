@@ -230,6 +230,7 @@ export function getInsightsHtml(cspSource: string): string {
   const sections = document.getElementById('sections');
   const disabledState = document.getElementById('disabled-state');
   const status = document.getElementById('status');
+  let lastConfig = null;
 
   let elements = {
     cycles:   { badge: document.getElementById('cycles-badge'),   body: document.getElementById('cycles-body')   },
@@ -378,6 +379,7 @@ export function getInsightsHtml(cspSource: string): string {
       disabledState.classList.add('hidden');
       sections.classList.remove('hidden');
       var d = msg.data;
+      lastConfig = msg.config || null;
       Object.keys(elements).forEach(function (k) {
         currentScrollTops[k] = elements[k].body.scrollTop;
       });
@@ -389,7 +391,13 @@ export function getInsightsHtml(cspSource: string): string {
       renderSection('unresolved', d.unresolved, 'No unresolved local imports detected');
       renderSection('fanOut', d.fanOut, 'No high fan-out files detected');
       renderSection('risky', d.risky, 'No risky modules detected');
-      renderSection('layerViolations', d.violations.filter(function (v) { return v.category === 'layerViolation'; }), 'No layer violations detected');
+      renderSection(
+        'layerViolations',
+        d.violations.filter(function (v) { return v.category === 'layerViolation'; }),
+        lastConfig && lastConfig.boundaries && lastConfig.boundaries.layerChecksActive === false
+          ? 'Layer checks inactive — configure boundaries.layers and boundaries.layerRules'
+          : 'No layer violations detected'
+      );
       renderSection('deepRelative', d.violations.filter(function (v) { return v.category === 'deepRelative'; }), 'No deep relative imports detected');
       renderSection('reverseTest', d.violations.filter(function (v) { return v.category === 'reverseTest'; }), 'No reverse test imports detected');
       renderSection('packageInternal', d.violations.filter(function (v) { return v.category === 'packageInternal'; }), 'No package internal violations detected');

@@ -16,6 +16,7 @@ import { insightSetToDiagnostics } from './analysis/diagnostics';
 import { GraphData } from './model/graphTypes';
 import { InsightSet, InsightSeverity } from './analysis/insightTypes';
 import { buildInsightsAgentReport } from './analysis/insightReport';
+import { summarizeBoundaryConfig } from './analysis/boundaryRules';
 
 let controller: GraphController | undefined;
 let panel: ArchGraphPanel | undefined;
@@ -157,15 +158,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const locWarning = cfg.get<number>('locWarningThreshold', 500);
       const locDanger = cfg.get<number>('locDangerThreshold', 1000);
       const entryPointPatterns = cfg.get<string[]>('entryPointPatterns', DEFAULT_ENTRY_POINT_PATTERNS);
+      const boundaries = summarizeBoundaryConfig(cfg.get('boundaries'));
       if (!enabled) {
         insightsView.showDisabled({
           topN,
           locWarning,
           locDanger,
           entryPointPatterns,
+          boundaries,
         });
       } else if (insights) {
-        insightsView.update(insights, { topN, locWarning, locDanger, entryPointPatterns });
+        insightsView.update(insights, { topN, locWarning, locDanger, entryPointPatterns, boundaries });
       }
     }
   });

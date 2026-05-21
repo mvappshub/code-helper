@@ -47,3 +47,4 @@ export interface GraphData {
 export function emptyGraph(): GraphData {
   return { nodes: [], edges: [], generatedAt: new Date().toISOString() };
 }
+

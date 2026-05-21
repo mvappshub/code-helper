@@ -1,5 +1,39 @@
 {
     "openrouterHandoffPlanner.backendUrl": "http://localhost:8000",
+    "codeLensArchExplorer.entryPointPatterns": [
+        "**/extension.ts",
+        "**/index.ts",
+        "**/main.{py,go,rs}",
+        "**/Program.cs",
+        "**/Main.java",
+        "**/*.test.{ts,tsx,js,jsx}",
+        "**/runTests.ts",
+        "**/webview/assets/graph-main.js"
+    ],
+    "codeLensArchExplorer.boundaries": {
+        "layers": [
+            { "name": "model", "match": ["src/model/**"] },
+            { "name": "analysis", "match": ["src/analysis/**"] },
+            { "name": "watcher", "match": ["src/watcher/**"] },
+            { "name": "webview", "match": ["src/webview/**"] },
+            { "name": "extension", "match": ["src/extension.ts"] }
+        ],
+        "layerRules": [
+            { "from": "model", "canImport": ["model"] },
+            { "from": "analysis", "canImport": ["analysis", "model"] },
+            { "from": "watcher", "canImport": ["watcher", "analysis", "model"] },
+            { "from": "webview", "canImport": ["webview", "analysis", "model"] },
+            { "from": "extension", "canImport": ["extension", "watcher", "webview", "analysis", "model"] }
+        ],
+        "maxRelativeDepth": 3,
+        "testPatterns": [
+            "**/*.{test,spec}.{ts,tsx,js,jsx}",
+            "**/test/**",
+            "**/tests/**",
+            "**/runTests.ts"
+        ],
+        "internalFolderNames": ["internal", "_internal", "private"]
+    },
     "chat.promptFilesRecommendations": {
         "speckit.constitution": true,
         "speckit.specify": true,

@@ -140,7 +140,8 @@ export class GraphBuilder {
     };
     this.nodes.set(id, node);
 
-    // Store raw imports on a side-channel so edge rebuild can use them
+    // Preserve every raw import on the node side-channel so edge rebuild
+    // and boundary checks can inspect specifiers even when resolution fails.
     const rawImports = extractImports(absPath, content);
     (node as GraphNode & { _rawImports?: RawImport[] })._rawImports = rawImports;
   }

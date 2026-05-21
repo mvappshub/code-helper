@@ -13,14 +13,15 @@ import {
 } from '../../analysis/insightTypes';
 import { GraphData, GraphNode, GraphEdge } from '../../model/graphTypes';
 import { matchesPatterns } from '../../util/fileMatcher';
+import { RawImport } from '../../analysis/extractors/types';
 
 // Helper to build a minimal GraphData
 function makeGraph(
-  specs: { id: string; loc?: number; unresolved?: string[] }[],
+  specs: { id: string; loc?: number; unresolved?: string[]; rawImports?: RawImport[] }[],
   edgeSpecs: Array<[string, string] | { source: string; target: string; sourceLine?: number; specifier?: string }>
 ): GraphData {
   const nodes: GraphNode[] = specs.map((s) => {
-    const node: GraphNode & { _unresolvedImports?: string[] } = {
+    const node: GraphNode & { _unresolvedImports?: string[]; _rawImports?: RawImport[] } = {
       id: s.id,
       path: `/ws/${s.id}`,
       language: 'ts',
@@ -31,6 +32,9 @@ function makeGraph(
     };
     if (s.unresolved) {
       node._unresolvedImports = s.unresolved;
+    }
+    if (s.rawImports) {
+      node._rawImports = s.rawImports;
     }
     return node;
   });
@@ -376,7 +380,13 @@ suite('computeInsights', () => {
   test('deep relative import uses threshold boundaries', () => {
     const data = makeGraph(
       [
-        { id: 'src/a/b/c/d.ts' },
+        {
+          id: 'src/a/b/c/d.ts',
+          rawImports: [
+            { specifier: '../../../shared/foo', sourceLine: 3 },
+            { specifier: '../../../../shared/foo', sourceLine: 4 },
+          ],
+        },
         { id: 'src/shared/foo.ts' },
       ],
       [
@@ -394,7 +404,10 @@ suite('computeInsights', () => {
   test('maxRelativeDepth zero reports any parent traversal', () => {
     const data = makeGraph(
       [
-        { id: 'src/foo.ts' },
+        {
+          id: 'src/foo.ts',
+          rawImports: [{ specifier: '../bar', sourceLine: 1 }],
+        },
         { id: 'src/bar.ts' },
       ],
       [{ source: 'src/foo.ts', target: 'src/bar.ts', sourceLine: 1, specifier: '../bar' }]
@@ -408,6 +421,26 @@ suite('computeInsights', () => {
     });
 
     assert.strictEqual(result.violations.filter((entry) => entry.category === 'deepRelative').length, 1);
+  });
+
+  test('deep relative import is reported even when the import never resolves', () => {
+    const data = makeGraph(
+      [
+        {
+          id: 'src/a/b/c/d.ts',
+          unresolved: ['../../../../missing'],
+          rawImports: [{ specifier: '../../../../missing', sourceLine: 7 }],
+        },
+      ],
+      []
+    );
+
+    const result = computeInsights(data, defaultOpts);
+    const deepRelative = result.violations.filter((entry) => entry.category === 'deepRelative');
+
+    assert.strictEqual(deepRelative.length, 1);
+    assert.strictEqual(deepRelative[0].sourceLine, 7);
+    assert.strictEqual(deepRelative[0].targetId, '../../../../missing');
   });
 
   test('reverse test import flags prod to test and ignores test to test', () => {

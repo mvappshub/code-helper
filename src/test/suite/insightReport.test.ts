@@ -189,5 +189,53 @@ suite('buildInsightsAgentReport', () => {
     assert.ok(report.includes('Please verify whether that likely reflects a healthy architecture'));
     assert.ok(report.includes('No dependency cycles detected.'));
     assert.ok(report.includes('No unresolved local imports detected.'));
+    assert.ok(report.includes('Layer checks are currently inactive because boundaries.layers or boundaries.layerRules are not configured.'));
+    assert.ok(report.includes('Layer checks inactive — configure boundaries.layers and boundaries.layerRules.'));
+  });
+
+  test('uses standard boundary wording when layer checks are active but no violations exist', () => {
+    const graph: GraphData = {
+      nodes: [makeNode('src/ui/view.ts', 40), makeNode('src/domain/model.ts', 25)],
+      edges: [makeEdge('src/ui/view.ts', 'src/domain/model.ts', 4, '../domain/model')],
+      generatedAt: '2026-05-21T08:00:00.000Z',
+    };
+
+    const insights: InsightSet = {
+      risky: [],
+      cycles: [],
+      orphans: [],
+      hubs: [],
+      bloated: [],
+      unresolved: [],
+      fanOut: [],
+      violations: [],
+      computedAt: '2026-05-21T08:01:00.000Z',
+    };
+
+    const report = buildInsightsAgentReport({
+      graph,
+      insights,
+      config: {
+        topN: 10,
+        locWarningThreshold: 500,
+        locDangerThreshold: 1000,
+        entryPointPatterns: ['**/extension.ts'],
+        boundaries: {
+          layers: [
+            { name: 'ui', match: ['src/ui/**'] },
+            { name: 'domain', match: ['src/domain/**'] },
+          ],
+          layerRules: [{ from: 'ui', canImport: ['domain'] }],
+        },
+      },
+      metadata: {
+        workspaceRoot: '/ws',
+        generatedAt: '2026-05-21T08:02:00.000Z',
+      },
+    });
+
+    assert.ok(report.includes('- Layer checks active: yes'));
+    assert.ok(report.includes('No configured boundary violations detected.'));
+    assert.ok(!report.includes('Layer checks inactive — configure boundaries.layers and boundaries.layerRules.'));
   });
 });

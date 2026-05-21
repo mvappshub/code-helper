@@ -45,6 +45,7 @@
 | `codeLensArchExplorer.boundaries` | object | Configures layer rules, relative-depth threshold, test patterns, and internal folder names |
 
 Insights sections remain visible with badge `0` and an empty-state message when no findings are present, including boundary categories.
+Layer violations are only evaluated when both `boundaries.layers` and `boundaries.layerRules` are configured. The other boundary checks (`deepRelative`, `reverseTest`, `packageInternal`) still run with their built-in defaults even when layer checks are inactive.
 
 ## AI Report Export
 
@@ -75,6 +76,7 @@ The **Architecture Insights** view toolbar now includes actions to copy or expor
 ```
 
 Explicit deny rules win over allow rules when both apply.
+If `layers` or `layerRules` are empty, the report and Insights view now call out that layer checks are inactive so `0 layer violations` is not misread as a clean architecture verdict.
 
 ## Architecture
 

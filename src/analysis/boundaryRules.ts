@@ -1,5 +1,6 @@
 import * as path from 'path';
-import { GraphData, GraphEdge, GraphNode } from '../model/graphTypes';
+import { GraphData, GraphNode } from '../model/graphTypes';
+import { RawImport } from './extractors/types';
 
 export interface Layer {
   name: string;
@@ -50,6 +51,12 @@ export interface ResolvedBoundaryConfig {
   internalFolderNames: string[];
 }
 
+export interface BoundaryConfigSummary {
+  layerCount: number;
+  ruleCount: number;
+  layerChecksActive: boolean;
+}
+
 const DEFAULT_TEST_PATTERNS = [
   '**/*.{test,spec}.{ts,tsx,js,jsx}',
   '**/test/**',
@@ -68,6 +75,15 @@ export function resolveBoundaryConfig(config?: BoundaryConfig): ResolvedBoundary
   };
 }
 
+export function summarizeBoundaryConfig(config?: BoundaryConfig): BoundaryConfigSummary {
+  const resolved = resolveBoundaryConfig(config);
+  return {
+    layerCount: resolved.layers.length,
+    ruleCount: resolved.layerRules.length,
+    layerChecksActive: resolved.layers.length > 0 && resolved.layerRules.length > 0,
+  };
+}
+
 export function computeBoundaryViolations(
   data: GraphData,
   config: BoundaryConfig | undefined,
@@ -78,6 +94,20 @@ export function computeBoundaryViolations(
   const layerAssignments = assignLayers(data.nodes, resolvedConfig.layers, context);
   const ruleIndex = compileLayerRules(resolvedConfig.layers, resolvedConfig.layerRules, context);
   const violations: BoundaryViolation[] = [];
+
+  for (const sourceNode of data.nodes) {
+    const rawImports = (sourceNode as GraphNode & { _rawImports?: RawImport[] })._rawImports ?? [];
+    for (const rawImport of rawImports) {
+      const deepRelativeViolation = computeDeepRelativeViolation(
+        sourceNode,
+        rawImport,
+        resolvedConfig.maxRelativeDepth
+      );
+      if (deepRelativeViolation) {
+        violations.push(deepRelativeViolation);
+      }
+    }
+  }
 
   for (const edge of data.edges) {
     if (edge.type !== 'import') {
@@ -91,11 +121,6 @@ export function computeBoundaryViolations(
     }
 
     const sourceLine = edge.sourceLine ?? 1;
-    const deepRelativeViolation = computeDeepRelativeViolation(sourceNode, targetNode, edge, resolvedConfig.maxRelativeDepth, sourceLine);
-    if (deepRelativeViolation) {
-      violations.push(deepRelativeViolation);
-    }
-
     const reverseTestViolation = computeReverseTestViolation(
       sourceNode,
       targetNode,
@@ -276,12 +301,10 @@ function computeLayerViolation(
 
 function computeDeepRelativeViolation(
   sourceNode: GraphNode,
-  targetNode: GraphNode,
-  edge: GraphEdge,
-  maxRelativeDepth: number,
-  sourceLine: number
+  rawImport: RawImport,
+  maxRelativeDepth: number
 ): BoundaryViolation | null {
-  const specifier = edge.specifier ?? '';
+  const specifier = rawImport.specifier;
   if (!specifier.startsWith('../')) {
     return null;
   }
@@ -291,13 +314,16 @@ function computeDeepRelativeViolation(
     return null;
   }
 
-  return createViolation(
-    'deepRelative',
-    sourceNode,
-    targetNode,
-    sourceLine,
-    `relative import depth ${depth} exceeds maxRelativeDepth ${maxRelativeDepth}`
-  );
+  return {
+    category: 'deepRelative',
+    sourcePath: sourceNode.path,
+    targetPath: specifier,
+    sourceLine: rawImport.sourceLine ?? 1,
+    rule: `relative import depth ${depth} exceeds maxRelativeDepth ${maxRelativeDepth}`,
+    title: `${sourceNode.id} -> ${specifier} (relative import depth ${depth} exceeds maxRelativeDepth ${maxRelativeDepth})`,
+    sourceId: sourceNode.id,
+    targetId: specifier,
+  };
 }
 
 function computeReverseTestViolation(
