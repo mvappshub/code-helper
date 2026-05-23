@@ -127,7 +127,7 @@ export function buildInsightsAgentReport(input: InsightReportInput): string {
       violations.forEach((violation, index) => {
         lines.push(`${index + 1}. ${violation.title}`);
         lines.push(`   - Category: ${violation.category}`);
-        lines.push('   - Severity: error');
+        lines.push(`   - Severity: ${violation.severity}`);
         lines.push(`   - Source: ${violation.sourceId}`);
         lines.push(`   - Target: ${violation.targetId}`);
         lines.push(`   - Source path: ${violation.sourcePath}`);
@@ -188,7 +188,7 @@ function countBySeverity(insights: InsightSet, severity: 'info' | 'warn' | 'erro
   return flattenInsightSet(insights)
     .filter((entry) => entry.severity === severity)
     .length
-    + (severity === 'error' ? insights.violations.length : 0);
+    + insights.violations.filter((entry) => entry.severity === severity).length;
 }
 
 function flattenInsightSet(insights: InsightSet): Insight[] {

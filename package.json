@@ -2,7 +2,7 @@
   "name": "codelens-arch-explorer",
   "displayName": "CodeLens Architecture Explorer",
   "description": "Real-time visualization of workspace file structure, code dependencies and line-count metrics.",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "publisher": "codelens",
   "engines": {
     "vscode": "^1.85.0"
@@ -194,7 +194,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "package:vsix": "npx @vscode/vsce package",
-    "install:vsix": "code --install-extension codelens-arch-explorer-0.4.2.vsix",
+    "install:vsix": "code --install-extension codelens-arch-explorer-0.4.3.vsix",
     "pretest": "npm run compile",
     "test": "node ./out/test/runTests.js",
     "lint": "eslint src --ext ts"

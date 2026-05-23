@@ -100,6 +100,7 @@ suite('buildInsightsAgentReport', () => {
       }],
       violations: [{
         category: 'layerViolation',
+        severity: 'error',
         sourcePath: '/ws/src/a.ts',
         targetPath: '/ws/src/b.ts',
         sourceLine: 12,

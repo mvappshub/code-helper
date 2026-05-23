@@ -351,6 +351,32 @@ suite('computeInsights', () => {
 
     assert.strictEqual(result.violations.filter((entry) => entry.category === 'layerViolation').length, 1);
     assert.strictEqual(result.violations[0].sourceLine, 4);
+    assert.strictEqual(result.violations[0].severity, 'error');
+  });
+
+  test('layer rule severity warn is propagated to violation', () => {
+    const data = makeGraph(
+      [
+        { id: 'src/ui/widget.ts' },
+        { id: 'src/db/conn.ts' },
+      ],
+      [{ source: 'src/ui/widget.ts', target: 'src/db/conn.ts', sourceLine: 8, specifier: '../db/conn' }]
+    );
+    const result = computeInsights(data, {
+      ...defaultOpts,
+      boundaries: {
+        ...defaultOpts.boundaries,
+        layers: [
+          { name: 'ui', match: ['src/ui/**'] },
+          { name: 'db', match: ['src/db/**'] },
+        ],
+        layerRules: [{ from: 'ui', cannotImport: ['db'], severity: 'warn' }],
+      },
+    });
+
+    assert.strictEqual(result.violations.length, 1);
+    assert.strictEqual(result.violations[0].category, 'layerViolation');
+    assert.strictEqual(result.violations[0].severity, 'warn');
   });
 
   test('layer allowlist reports disallowed target', () => {
@@ -375,6 +401,7 @@ suite('computeInsights', () => {
     });
 
     assert.strictEqual(result.violations.filter((entry) => entry.category === 'layerViolation').length, 1);
+    assert.strictEqual(result.violations[0].severity, 'error');
   });
 
   test('deep relative import uses threshold boundaries', () => {
@@ -522,5 +549,147 @@ suite('computeInsights', () => {
 
     assert.strictEqual(result.violations.filter((entry) => entry.category === 'layerViolation').length, 1);
     assert.strictEqual(warnings.length, 1);
+  });
+
+  test('public entry allows cross-layer import through facade only', () => {
+    const viaFacade = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/feature/page.ts' },
+          { id: 'src/lib/analysis/index.ts' },
+        ],
+        [{ source: 'src/feature/page.ts', target: 'src/lib/analysis/index.ts', sourceLine: 3, specifier: '../lib/analysis' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'feature', match: ['src/feature/**'] },
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'], publicEntry: ['src/lib/analysis/index.ts'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    const bypassFacade = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/feature/page.ts' },
+          { id: 'src/lib/analysis/graphBuilder.ts' },
+        ],
+        [{ source: 'src/feature/page.ts', target: 'src/lib/analysis/graphBuilder.ts', sourceLine: 5, specifier: '../lib/analysis/graphBuilder' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'feature', match: ['src/feature/**'] },
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'], publicEntry: ['src/lib/analysis/index.ts'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    assert.strictEqual(viaFacade.violations.filter((entry) => entry.category === 'facadeBypass').length, 0);
+    assert.strictEqual(bypassFacade.violations.filter((entry) => entry.category === 'facadeBypass').length, 1);
+    assert.strictEqual(bypassFacade.violations[0].severity, 'warn');
+  });
+
+  test('public entry does not restrict imports within the same layer', () => {
+    const result = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/lib/analysis/graphBuilder.ts' },
+          { id: 'src/lib/analysis/cycleDetector.ts' },
+        ],
+        [{ source: 'src/lib/analysis/graphBuilder.ts', target: 'src/lib/analysis/cycleDetector.ts', sourceLine: 6, specifier: './cycleDetector' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'], publicEntry: ['src/lib/analysis/index.ts'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    assert.strictEqual(result.violations.filter((entry) => entry.category === 'facadeBypass').length, 0);
+  });
+
+  test('avoidDeepImportsInto warns only for matching cross-layer imports', () => {
+    const deepInternal = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/feature/page.ts' },
+          { id: 'src/lib/analysis/extractors/tokenizer.ts' },
+        ],
+        [{ source: 'src/feature/page.ts', target: 'src/lib/analysis/extractors/tokenizer.ts', sourceLine: 4, specifier: '../lib/analysis/extractors/tokenizer' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'feature', match: ['src/feature/**'] },
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'], avoidDeepImportsInto: ['src/lib/analysis/extractors/**'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    const allowedImport = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/feature/page.ts' },
+          { id: 'src/lib/analysis/index.ts' },
+        ],
+        [{ source: 'src/feature/page.ts', target: 'src/lib/analysis/index.ts', sourceLine: 2, specifier: '../lib/analysis' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'feature', match: ['src/feature/**'] },
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'], avoidDeepImportsInto: ['src/lib/analysis/extractors/**'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    const noRule = computeInsights(
+      makeGraph(
+        [
+          { id: 'src/feature/page.ts' },
+          { id: 'src/lib/analysis/extractors/tokenizer.ts' },
+        ],
+        [{ source: 'src/feature/page.ts', target: 'src/lib/analysis/extractors/tokenizer.ts', sourceLine: 4, specifier: '../lib/analysis/extractors/tokenizer' }]
+      ),
+      {
+        ...defaultOpts,
+        boundaries: {
+          ...defaultOpts.boundaries,
+          layers: [
+            { name: 'feature', match: ['src/feature/**'] },
+            { name: 'domain-analysis', match: ['src/lib/analysis/**'] },
+          ],
+          layerRules: [],
+        },
+      }
+    );
+
+    assert.strictEqual(deepInternal.violations.filter((entry) => entry.category === 'deepInternalImport').length, 1);
+    assert.strictEqual(deepInternal.violations[0].severity, 'warn');
+    assert.strictEqual(allowedImport.violations.filter((entry) => entry.category === 'deepInternalImport').length, 0);
+    assert.strictEqual(noRule.violations.filter((entry) => entry.category === 'deepInternalImport').length, 0);
   });
 });

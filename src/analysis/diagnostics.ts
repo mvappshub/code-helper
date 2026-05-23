@@ -4,7 +4,15 @@ import { InsightSet, InsightSeverity } from './insightTypes';
 export interface DiagnosticDescriptor {
   path: string;
   message: string;
-  code: 'arch.cycle' | 'arch.bloated' | 'arch.layerViolation' | 'arch.deepRelative' | 'arch.reverseTest' | 'arch.packageInternal';
+  code:
+    | 'arch.cycle'
+    | 'arch.bloated'
+    | 'arch.layerViolation'
+    | 'arch.deepRelative'
+    | 'arch.reverseTest'
+    | 'arch.packageInternal'
+    | 'arch.facadeBypass'
+    | 'arch.deepInternalImport';
   source: 'CodeLens Architecture';
   severity: InsightSeverity;
   line?: number;
@@ -62,7 +70,7 @@ export function insightSetToDiagnostics(
       message: violation.title,
       code: violationCodeForCategory(violation.category),
       source: 'CodeLens Architecture',
-      severity: 'warn',
+      severity: violation.severity,
       line: violation.sourceLine,
     });
   }
@@ -71,7 +79,7 @@ export function insightSetToDiagnostics(
 }
 
 function violationCodeForCategory(
-  category: 'layerViolation' | 'deepRelative' | 'reverseTest' | 'packageInternal'
+  category: 'layerViolation' | 'deepRelative' | 'reverseTest' | 'packageInternal' | 'facadeBypass' | 'deepInternalImport'
 ): DiagnosticDescriptor['code'] {
   switch (category) {
     case 'layerViolation':
@@ -82,6 +90,10 @@ function violationCodeForCategory(
       return 'arch.reverseTest';
     case 'packageInternal':
       return 'arch.packageInternal';
+    case 'facadeBypass':
+      return 'arch.facadeBypass';
+    case 'deepInternalImport':
+      return 'arch.deepInternalImport';
   }
 }
 
